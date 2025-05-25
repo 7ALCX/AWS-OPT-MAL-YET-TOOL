@@ -1,0 +1,122 @@
+[
+    {
+        "Date": "2025-04-25",
+        "Service": "Amazon EC2",
+        "Cost": 15.23,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-25",
+        "Service": "Amazon S3",
+        "Cost": 2.10,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-25",
+        "Service": "AWS Lambda",
+        "Cost": 0.55,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-25",
+        "Service": "Amazon RDS",
+        "Cost": 7.80,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-26",
+        "Service": "Amazon EC2",
+        "Cost": 16.10,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-26",
+        "Service": "Amazon S3",
+        "Cost": 2.25,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-26",
+        "Service": "AWS Lambda",
+        "Cost": 0.60,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-26",
+        "Service": "Amazon VPC",
+        "Cost": 0.15,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-27",
+        "Service": "Amazon EC2",
+        "Cost": 14.80,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-27",
+        "Service": "Amazon S3",
+        "Cost": 2.00,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-27",
+        "Service": "AWS Lambda",
+        "Cost": 0.50,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-27",
+        "Service": "Amazon RDS",
+        "Cost": 7.50,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-28",
+        "Service": "Amazon EC2",
+        "Cost": 15.50,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-28",
+        "Service": "Amazon S3",
+        "Cost": 2.15,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-28",
+        "Service": "AWS Lambda",
+        "Cost": 0.58,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-28",
+        "Service": "Amazon EBS",
+        "Cost": 0.30,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-29",
+        "Service": "Amazon EC2",
+        "Cost": 16.00,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-29",
+        "Service": "Amazon S3",
+        "Cost": 2.30,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-29",
+        "Service": "AWS Lambda",
+        "Cost": 0.62,
+        "Unit": "USD"
+    },
+    {
+        "Date": "2025-04-29",
+        "Service": "Amazon RDS",
+        "Cost": 7.90,
+        "Unit": "USD"
+    }
+]
