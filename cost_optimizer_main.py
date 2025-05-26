@@ -1,158 +1,117 @@
-import boto3
+import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import json
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Attempt to initialize AWS Cost Explorer client
-try:
-    # boto3 automatically looks for AWS credentials in environment variables or ~/.aws/credentials file.
-    ce_client = boto3.client('ce', region_name='us-east-1')
-    print("AWS Cost Explorer client successfully initialized. Ready for real data fetching.")
-except Exception as e:
-    print(f"Error: Could not initialize AWS client. Please check credentials or region. Detail: {e}")
-    print("This might occur if your AWS account is new or credentials are not properly configured.")
-    ce_client = None # Set client to None if initialization fails
+# Türkçe karakter desteği ve figür kapatma ayarları
+plt.rcParams['font.family'] = 'Arial'
+plt.rcParams['axes.unicode_minus'] = False
 
-def get_cost_and_usage_data(client, start_date, end_date):
+# Streamlit uygulamanızın sayfa ayarları
+st.set_page_config(layout="wide", page_title="AWS Maliyet Optimizasyon Aracı")
+
+st.title("💰 AWS Maliyet Optimizasyon Aracı")
+st.write("Bu uygulama, AWS maliyet verilerini analiz eder ve potansiyel optimizasyon alanlarını belirler.")
+st.write("⚠️ **ÖNEMLİ:** Bu sürüm sadece 'mock_aws_costs.json' dosyasındaki simüle edilmiş veriyi kullanır, gerçek AWS verisi çekmez.")
+
+# --- get_cost_and_usage_data fonksiyonu (Şimdi sadece mock veri döndürecek) ---
+def get_mock_cost_data():
     """
-    Fetches daily cost and usage data from AWS Cost Explorer API for a specified date range.
-    Groups data by service and uses 'UnblendedCost' metric.
+    Loads mock cost data from 'mock_aws_costs.json'.
     """
-    if client is None:
-        print("AWS client is not available. Cannot fetch real data.")
-        return []
-
-    results = []
-    next_page_token = None
-
-    print(f"\nAttempting to fetch real AWS cost data for period: {start_date} - {end_date}")
-
-    while True:
-        try:
-            params = {
-                'TimePeriod': {
-                    'Start': start_date,
-                    'End': end_date
-                },
-                'Granularity': 'DAILY',
-                'Metrics': ['UnblendedCost'],
-                'GroupBy': [
-                    {'Type': 'DIMENSION', 'Key': 'SERVICE'}
-                ]
-            }
-            if next_page_token:
-                params['NextPageToken'] = next_page_token
-
-            response = client.get_cost_and_usage(**params)
-            results.extend(response['ResultsByTime'])
-            next_page_token = response.get('NextPageToken')
-
-            if not next_page_token:
-                break
-        except client.exceptions.DataUnavailableException:
-            print(f"No data found or not yet available for: {start_date} - {end_date}. Cost Explorer data usually appears after 24-48 hours.")
-            return []
-        except Exception as e:
-            print(f"Error occurred during AWS API call: {e}")
-            print("Please check your IAM permissions (e.g., AWSCostExplorerReadOnlyAccess).")
-            return []
-
-    processed_data = []
-    for result_by_time in results:
-        date = result_by_time['TimePeriod']['Start']
-        for group in result_by_time['Groups']:
-            service = group['Keys'][0]
-            cost = float(group['Metrics']['UnblendedCost']['Amount'])
-            unit = group['Metrics']['UnblendedCost']['Unit']
-            processed_data.append({
-                'Date': date,
-                'Service': service,
-                'Cost': cost,
-                'Unit': unit
-            })
-    return processed_data
+    try:
+        with open('mock_aws_costs.json', 'r') as f:
+            data = json.load(f)
+        return data
+    except FileNotFoundError:
+        st.error("Hata: 'mock_aws_costs.json' bulunamadı. Lütfen dosyanın uygulamanızla aynı klasörde olduğundan emin olun.")
+        st.stop()
+    except Exception as e:
+        st.error(f"Mock veri okunurken bir hata oluştu: {e}")
+        st.stop()
 
 # --- Main Workflow ---
 
-# Define date range to fetch cost data for the last 30 days
-end_date = datetime.now().strftime('%Y-%m-%d')
-start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+# Tarih aralığı seçicileri (sidebar'da) - Bu kısım sadece görsel amaçlı kalacak
+st.sidebar.header("Tarih Aralığı Seçimi (Simüle Edilmiş Veri İçin)")
+today = datetime.now()
+default_start_date = today - timedelta(days=30)
+default_end_date = today
 
-# Attempt to fetch real data from AWS
-aws_costs = get_cost_and_usage_data(ce_client, start_date, end_date)
+start_date_input = st.sidebar.date_input("Başlangıç Tarihi", default_start_date)
+end_date_input = st.sidebar.date_input("Bitiş Tarihi", default_end_date)
 
-# Fallback to simulated data if real data could not be fetched
-if not aws_costs:
-    print("Real AWS cost data not available or empty. Using simulated data for analysis and demonstration...")
-    try:
-        with open('mock_aws_costs.json', 'r') as f:
-            aws_costs = json.load(f)
-    except FileNotFoundError:
-        print("Error: 'mock_aws_costs.json' not found. Please ensure the file exists.")
-        exit("Program terminated. Data source unavailable.")
 
-# Convert loaded data to Pandas DataFrame
+# Simüle edilmiş veriyi çek
+aws_costs = get_mock_cost_data()
+
+# Veriyi Pandas DataFrame'e dönüştür
 df = pd.DataFrame(aws_costs)
-
-# Convert 'Date' column to datetime objects
 df['Date'] = pd.to_datetime(df['Date'])
 
-print("\n--- AWS Cost Data Sample (First 5 Rows) ---")
-print(df.head().to_string())
-print("\n")
+if not df.empty:
+    st.subheader("AWS Maliyet Verisi Örneği (İlk 5 Satır)")
+    st.dataframe(df.head())
 
-# --- Data Processing and Analysis ---
+    # --- Veri İşleme ve Analiz ---
+    st.header("Maliyet Analizleri")
 
-# a) Calculate daily total costs
-daily_total_cost = df.groupby('Date')['Cost'].sum().reset_index()
-print("--- Daily Total Costs ---")
-print(daily_total_cost.to_string(index=False))
-print("\n")
+    # a) Günlük toplam maliyetler
+    daily_total_cost = df.groupby('Date')['Cost'].sum().reset_index()
+    st.subheader("Günlük Toplam Maliyetler")
+    st.dataframe(daily_total_cost)
 
-# b) Calculate total costs by service
-service_total_cost = df.groupby('Service')['Cost'].sum().reset_index()
-print("--- Total Costs by Service ---")
-print(service_total_cost.sort_values(by='Cost', ascending=False).to_string(index=False))
-print("\n")
+    # b) Servis bazında toplam maliyetler
+    service_total_cost = df.groupby('Service')['Cost'].sum().reset_index()
+    service_total_cost = service_total_cost.sort_values(by='Cost', ascending=False)
+    st.subheader("Servis Bazında Toplam Maliyetler")
+    st.dataframe(service_total_cost)
 
-# --- Basic Optimization Recommendation Logic ---
+    # --- Temel Optimizasyon Önerisi Mantığı ---
+    st.header("Optimizasyon Önerileri")
 
-df['DayServiceCost'] = df.groupby(['Date', 'Service'])['Cost'].transform('sum')
-high_cost_per_service_per_day = df[df['DayServiceCost'] > 10].drop_duplicates(subset=['Date', 'Service'])
+    df['DayServiceCost'] = df.groupby(['Date', 'Service'])['Cost'].transform('sum')
+    # Öneri eşiğini düşürdük, daha fazla öneri görmek için
+    high_cost_per_service_per_day = df[df['DayServiceCost'] > 1].drop_duplicates(subset=['Date', 'Service'])
 
-if not high_cost_per_service_per_day.empty:
-    print("**Optimization Recommendations:**")
-    for index, row in high_cost_per_service_per_day.iterrows():
-        print(f"- On {row['Date'].strftime('%Y-%m-%d')}, '{row['Service']}' cost {row['Cost']:.2f} {row['Unit']}. Consider reviewing its usage!")
+    if not high_cost_per_service_per_day.empty:
+        st.warning("**Optimizasyon Önerileri:**")
+        for index, row in high_cost_per_service_per_day.iterrows():
+            st.write(f"- **{row['Date'].strftime('%Y-%m-%d')}** tarihinde, **'{row['Service']}'** hizmetinin maliyeti **{row['Cost']:.2f} {row['Unit']}** oldu. Kullanımını gözden geçirmeyi düşünün!")
+    else:
+        st.info("Maliyetler kontrol altında görünüyor; şu anda belirgin bir optimizasyon önerisi yok (simüle edilmiş veri için).")
+
+    # --- Veri Görselleştirme ---
+    st.header("Maliyet Görselleştirmeleri")
+
+    # Günlük Maliyet Trendi Plotu
+    st.subheader("Günlük Toplam AWS Maliyet Eğilimi")
+    plt.figure(figsize=(12, 6))
+    sns.lineplot(x='Date', y='Cost', data=daily_total_cost, marker='o', color='skyblue')
+    plt.title('Daily Total AWS Cost Trend', fontsize=16)
+    plt.xlabel('Date', fontsize=12)
+    plt.ylabel('Cost (USD)', fontsize=12)
+    plt.grid(True)
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    st.pyplot(plt)
+    plt.clf()
+
+    # Servis Bazında Maliyet Dağılımı Plotu
+    st.subheader("Servis Bazında AWS Maliyet Dağılımı")
+    plt.figure(figsize=(12, 7))
+    sns.barplot(x='Service', y='Cost', data=service_total_cost.sort_values(by='Cost', ascending=False), palette='viridis')
+    plt.title('AWS Cost Distribution by Service', fontsize=16)
+    plt.xlabel('AWS Service', fontsize=12)
+    plt.ylabel('Total Cost (USD)', fontsize=12)
+    plt.xticks(rotation=60, ha='right')
+    plt.tight_layout()
+    st.pyplot(plt)
+    plt.clf()
+
 else:
-    print("Costs appear to be under control; no prominent optimization recommendations at this time.")
-print("\n")
+    st.error("Analiz edilecek veri bulunamadı. Lütfen 'mock_aws_costs.json' dosyasının doğru olduğundan emin olun.")
 
-# --- Data Visualization ---
-
-plt.style.use('ggplot')
-
-# Plot for Daily Cost Trend
-plt.figure(figsize=(12, 6))
-sns.lineplot(x='Date', y='Cost', data=daily_total_cost, marker='o', color='skyblue')
-plt.title('Daily Total AWS Cost Trend', fontsize=16)
-plt.xlabel('Date', fontsize=12)
-plt.ylabel('Cost (USD)', fontsize=12)
-plt.grid(True)
-plt.xticks(rotation=45, ha='right')
-plt.tight_layout()
-plt.savefig('daily_cost_trend.png', dpi=300)
-
-# Plot for Service-wise Cost Distribution
-plt.figure(figsize=(12, 7))
-sns.barplot(x='Service', y='Cost', data=service_total_cost.sort_values(by='Cost', ascending=False), palette='viridis')
-plt.title('AWS Cost Distribution by Service', fontsize=16)
-plt.xlabel('AWS Service', fontsize=12)
-plt.ylabel('Total Cost (USD)', fontsize=12)
-plt.xticks(rotation=60, ha='right')
-plt.tight_layout()
-plt.savefig('service_cost_distribution.png', dpi=300)
-
-print("\nCost analysis and visualization completed. Graphs saved as 'daily_cost_trend.png' and 'service_cost_distribution.png'.")
+st.write("\nAnaliz ve görselleştirmeler tamamlandı.")
